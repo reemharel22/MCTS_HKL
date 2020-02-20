@@ -5,6 +5,7 @@ import numpy as np
 
 from .find_min import findmin
 
+
 def better_bumps(model):
 
     zin=[]
@@ -20,9 +21,7 @@ def better_bumps(model):
         schi=model.nllf()
         nllfs.append(schi)
         zin.append(zs)
-    
-    xpeaks = findmin(zin,nllfs,10)
-    print('xpeak', xpeaks)
+    xpeaks = findmin(zin, nllfs, 10)
     model.atomListModel.atomModels[0].z.value = zin[xpeaks[0]]
     model.update()
     problem = bumps.FitProblem(model)

@@ -6,3 +6,7 @@ register(
     id='hkl-v0',
     entry_point='HklEnv.envs.hkl:HklEnv',
 )
+register(
+    id='hkl-v1',
+    entry_point='HklEnv.envs.khkl:HklEnv',
+)
