@@ -4,15 +4,12 @@ import gym
 import sys
 import random
 import itertools
-import json
-import io
-import time as t
-from time import time
-from copy import copy
+import copy
 from math import sqrt, log
 import HklEnv
 import baselines
 import numpy as np
+
 
 def moving_average(v, n):
     n = min(len(v), n)
@@ -21,6 +18,14 @@ def moving_average(v, n):
     for i in range(len(v)-n):
         ret[i+1] = ret[i] + float(v[n+i] - v[i])/n
     return ret
+
+
+def softmax(x):
+    probs = np.exp(x - np.max(x))
+    # https://mp.weixin.qq.com/s/2xYgaeLlmmUfxiHCbCa8dQ
+    # avoid float overflow and underflow
+    probs /= np.sum(probs)
+    return probs
 
 
 def ucb(node):
@@ -45,26 +50,17 @@ class Node:
         self.id = Node.counter = Node.counter+1
         self.parent = parent
         self.action = action
-        # self.path = os.path.join(directory, 'tree.json')
         self.children = []
         self.explored_children = 0
         self.visits = 0
         self.reward = 0
         self.value = 0
         self.state = ""
-        # with io.open(self.path, 'a') as f:
-        #     json.dump({
-        #         'id': self.id,
-        #         'parent': -1 if not self.parent else self.parent.id,
-        #         'action': self.action,
-        #     }, f)
 
     def to_json(self):
         ret_dict = {}
         ret_dict['id'] = self.id
-        # ret_dict['parent'] = self.parent
         ret_dict['action'] = self.action
-        # ret_dict['explored_children'] = self.explored_children
         ret_dict['visits'] = self.visits
         ret_dict['value'] = self.value
         ret_dict['reward'] = self.reward
@@ -76,114 +72,79 @@ class Node:
 
 
 class Runner:
-    def __init__(self, rec_dir, env_name, loops=300, max_depth=1000, playouts=10000):
+    def __init__(self, rec_dir, env_name, max_depth=1000, playouts=10000):
         self.env_name = env_name
-        self.dir = rec_dir+'/'+env_name
-        os.makedirs(self.dir)
-
-        self.loops = loops
         self.max_depth = max_depth
         self.playouts = playouts
+        self.dir = rec_dir+'/'+env_name
+        os.makedirs(self.dir)
+        self.root = Node(None, None, self.dir)
+        self.env = gym.make(self.env_name)
 
     def print_stats(self, loop, score, avg_time):
         sys.stdout.write('\r%3d   score:%10.3f   avg_time:%4.1f s' % (loop, score, avg_time))
         sys.stdout.flush()
 
-    def run(self):
-        best_rewards = []
-        start_time = time()
-        env = gym.make(self.env_name)
-        #env = gym.wrappers.Monitor(env, self.dir)
-        #env.monitor.start(self.dir)
+    def reset_player(self):
+        self.root = Node(None, None, self.dir)
 
-        print (self.env_name)
-
-        for loop in range(self.loops):
-            env.reset()
-            root = Node(None, None, self.dir)
-
-            best_actions = []
-            best_reward = float("-inf")
-
-            for _ in range(self.playouts):
-                state = copy(env)
-                state = gym.make(self.env_name)
-                state.reset()
-                # del state._monitor
-
-                sum_reward = 0
-                node = root
-                terminal = False
-                actions = []
-
-                # selection
-                while node.children:
-                    if node.explored_children < len(node.children):
-                        child = node.children[node.explored_children]
-                        node.explored_children += 1
-                        node = child
-                    else:
-                        node = max(node.children, key=ucb)
-                    _, reward, terminal, info = state.step(node.action)
-                    node.state = str(info['hkl'][0]) + " " + str(info['hkl'][1]) + " " + str(info['hkl'][2])
-                    node.reward = reward
-                    sum_reward += reward
-                    actions.append(node.action)
-
-                # expansion
-                if not terminal:
-                    node.children = [Node(node, a, self.dir) for a in combinations(state.action_space)]
-                    random.shuffle(node.children)
-
-                # playout
-                while not terminal:
-                    action = state.action_space.sample()
-                    _, reward, terminal, _ = state.step(action)
-                    sum_reward += reward
-                    actions.append(action)
-
-                    if len(actions) > self.max_depth:
-                        sum_reward -= 100
-                        break
-
-                # remember best
-                if best_reward < sum_reward:
-                    best_reward = sum_reward
-                    best_actions = actions
-
-                # backpropagate
-                while node:
-                    node.visits += 1
-                    node.value += sum_reward
-                    node = node.parent
-
-                # fix monitors not being garbage collected
-                #del state._monitor
+    # TODO: start the playout just from the given env state (originally, started from root).
+    def get_action(self,env):
+        for _ in range(self.playouts):
+            env_state = copy.deepcopy(env)
 
             sum_reward = 0
-            max_reward = 0
-            print("best:", end =" ")
-            for action in best_actions:
-                print(action, end =", ")
-                _, reward, terminal, info = env.step(action)
-                if reward != 0 and reward > max_reward:
-                    info_best = info
-                    max_reward = reward
+            node = self.root
+            terminal = False
+            actions = []
+
+            # selection
+            while node.children:
+                if node.explored_children < len(node.children):
+                    child = node.children[node.explored_children]
+                    node.explored_children += 1
+                    node = child
+                else:
+                    node = max(node.children, key=ucb)
+                _, reward, terminal, info = env_state.step(node.action)
+                node.state = str(info['hkl'][0]) + " " + str(info['hkl'][1]) + " " + str(info['hkl'][2])
+                node.reward = reward
                 sum_reward += reward
-                if terminal:
-                    print("")
+                actions.append(node.action)
+
+            # expansion
+            if not terminal:
+                node.children = [Node(node, a, self.dir) for a in combinations(env_state.action_space)]
+                random.shuffle(node.children)
+
+            # playout
+            while not terminal:
+                action = env_state.action_space.sample()
+                _, reward, terminal, _ = env_state.step(action)
+                sum_reward += reward
+                actions.append(action)
+
+                if len(actions) > self.max_depth:
+                    sum_reward -= 100
                     break
-            print("Best HKL: ", str(info_best['hkl'][0]) + " " + str(info_best['hkl'][1]) + " "
-                  + str(info_best['hkl'][2]), "With the score of: ", max_reward, "!!!!")
 
-            with open(os.path.join(self.dir, 'tree.json'), 'w') as json_out_file:
-                json.dump(root.to_json(), json_out_file)
+            # backpropagate
+            while node:
+                node.visits += 1
+                node.value += sum_reward
+                node = node.parent
 
-            best_rewards.append(sum_reward)
-            score = max(moving_average(best_rewards, 100))
-            avg_time = (time()-start_time)/(loop+1)
-            self.print_stats(loop+1, score, avg_time)
-        #env.monitor.close()
+        # The following lines are adopted form AlphaGo to calculate the probabilities of each step.
+        move_probs = np.zeros(len(self.root.children))
+        act_visits = [(node.action, node.visits)
+                      for node in self.root.children]
+        acts, visits = zip(*act_visits)
+        # TODO: We may consider replace softmax with UCB.
+        p = softmax(1.0 / 1.0 * np.log(np.array(visits) + 1e-10))
+        move_probs[list(acts)] = p
+        move = np.random.choice(acts, p=move_probs)
+
+        return move, move_probs
 
 
 def main():
@@ -197,9 +158,13 @@ def main():
     os.makedirs(rec_dir)
     print ("rec_dir:", rec_dir)
 
+    runner = Runner(rec_dir, 'hkl-v1', max_depth=10000, playouts=22*22*22)
+    move, probs = runner.get_action(runner.env)
+    print(move, probs)
+    runner.env.step(move)
+
     # Toy text
-    Runner(rec_dir, 'hkl-v1',   loops=1, playouts=22*22*22, max_depth=10000).run()
-    #Runner(rec_dir, 'NChain-v0', loops=100, playouts=3000, max_depth=50).run()
+    # Runner(rec_dir, 'NChain-v0', loops=100, playouts=3000, max_depth=50).run()
     #
     # # Algorithmic
     # Runner(rec_dir, 'Copy-v0').run()
