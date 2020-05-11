@@ -91,7 +91,7 @@ class Runner:
     # TODO: start the playout just from the given env state (originally, started from root).
     def get_action(self,env):
         for _ in range(self.playouts):
-            env_state = copy.deepcopy(env)
+            env_state = copy.copy(env)
 
             sum_reward = 0
             node = self.root
