@@ -52,8 +52,8 @@ class HklEnv(gym.Env):
     def __init__(self, reward_scale=100):
         n_actions = 4
         self.reward_scale=reward_scale
-        print("Loading problem from %r. Set HklEnv.hkl.DATAPATH"
-              " or os.environ['HKL_DATAPATH'] to override." % DATAPATH)
+        #print("Loading problem from %r. Set HklEnv.hkl.DATAPATH"
+        #      " or os.environ['HKL_DATAPATH'] to override." % DATAPATH)
         observedFile = os.path.join(DATAPATH,r"prnio.int")
         infoFile = os.path.join(DATAPATH,r"prnio.cfl")
         self.data_file = observedFile
@@ -77,7 +77,6 @@ class HklEnv(gym.Env):
         self.observation_space = Bin_Discrete(len(self.refList))
         self.action_space = Discrete(n_actions)
 
-        print("ACTION SPACE INIT IS: ", self.action_space)
         #Graphing and logging arrays
         self.storspot = STOREPATH
         self.rewards = []
@@ -103,6 +102,7 @@ class HklEnv(gym.Env):
         self.reset()
 
     def step(self, actions=None):
+        #print("Action #",actions, end=", ")
         hkl_prev = [None] * 3
         hkl_prev[0] = self.hs[-1]
         hkl_prev[1] = self.ks[-1]
@@ -126,8 +126,7 @@ class HklEnv(gym.Env):
         if next_ref == -1 or next_ref == 0:
             reward = 0
         else:
-            print("Action: ", actions)
-
+            print("Valid HKL #",next_ref)
             actions = next_ref
             reward = 0
             print ("Selected HKL: ", self.refList[actions].hkl)
@@ -259,7 +258,7 @@ class HklEnv(gym.Env):
         filename = self.storspot +"/rewardLog-" +  str(self.envRank) + ".txt"
         np.savetxt(filename, self.rewards)   
         
-        print("ENDED EPISODE")
+        print("======ENDED EPISODE======\n\n")
 
     @property
     def states(self):
@@ -268,6 +267,21 @@ class HklEnv(gym.Env):
     @property
     def actions(self):
         return dict(num_actions=len(self.refList), type='int')
+
+    def clone_full_state(self):
+        state = []
+        for i,h in enumerate(self.hs):
+            state.append((h, self.ks[i], self.ls[i]))
+        return state
+
+    def restore_full_state(self, state):
+        self.hs = []
+        self.ks = []
+        self.ls = []
+        for hkl in state:
+            self.hs.append(hkl[0])
+            self.ks.append(hkl[1])
+            self.ls.append(hkl[2])
 
 
 def profile(fn, *args, **kw):
@@ -331,3 +345,4 @@ class Profiler(object):
     def cleanup():
         self.summarize()
         os.unlink(self.datafile)
+

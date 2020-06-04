@@ -24,6 +24,8 @@
 *.log
 *.sql
 *.sqlite
+*Log-1_0.txt
+*Log-0.txt
  
 # OS generated files #
 ######################
@@ -45,3 +47,4 @@ __pycache__
 /src
 /dist
 /build
+rec/

@@ -91,7 +91,9 @@ class Runner:
     # TODO: start the playout just from the given env state (originally, started from root).
     def get_action(self,env):
         for _ in range(self.playouts):
-            env_state = copy.deepcopy(env)
+            temp_env_state = env.unwrapped.clone_full_state()
+            env_state = gym.make(self.env_name)
+            env_state.unwrapped.restore_full_state(temp_env_state)
 
             sum_reward = 0
             node = self.root
