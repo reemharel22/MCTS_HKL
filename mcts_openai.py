@@ -115,6 +115,7 @@ class Runner:
                     node = max(node.children, key=ucb)
                 _, reward, terminal, info = env_state.step(node.action)
                 node.state = str(info['hkl'][0]) + " " + str(info['hkl'][1]) + " " + str(info['hkl'][2])
+                #node.state = env_state.unwrapped.clone_full_state()
                 node.reward = reward
                 sum_reward += reward
                 actions.append(node.action)

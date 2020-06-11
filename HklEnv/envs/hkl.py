@@ -52,6 +52,7 @@ class HklEnv(gym.Env):
 
     def __init__(self, reward_scale=100):
         self.reward_scale=reward_scale
+        self.verbose = False
         print("Loading problem from %r. Set HklEnv.hkl.DATAPATH"
               " or os.environ['HKL_DATAPATH'] to override." % DATAPATH)
         observedFile = os.path.join(DATAPATH,r"prnio.int")
@@ -77,7 +78,6 @@ class HklEnv(gym.Env):
         self.observation_space = Bin_Discrete(len(self.refList))
         self.action_space = Bin_Discrete(len(self.refList))
 
-        print("ACTION SPACE INIT IS: ", self.action_space)
         #Graphing and logging arrays
         self.storspot = STOREPATH
         self.rewards = []
@@ -147,7 +147,6 @@ class HklEnv(gym.Env):
             # print("about to fit")
 
             x, dx, chisq, params = better_bumps(self.model)
-
             dz = params[0].dx
 
             # Reward function
@@ -237,12 +236,9 @@ class HklEnv(gym.Env):
 
     def step(self, actions=None):
 
-        print("\n\nstepping", actions)
-        #Mapping masked action indices to expected indices
 
         small_scale_ac = actions
         # actions = self.remaining_acs[int(actions)]
-        print ("Actions:", actions)
 
         # self.remaining_acs = np.delete(self.remaining_acs, small_scale_ac)
         #self.action_space = np.delete(self.action_space, small_scale_ac)
@@ -259,7 +255,8 @@ class HklEnv(gym.Env):
 
         #Find the data for this hkl value and add it to the model
         self.model.refList = H.ReflectionList(self.visited)
-        print (self.model.refList)
+        if self.verbose:
+            print (self.model.refList)
         self.model._set_reflections()
 
         self.model.error.append(self.error[int(actions)])
@@ -273,10 +270,12 @@ class HklEnv(gym.Env):
 
         if len(self.visited) > 1:
             # print("about to fit")
-
             x, dx, chisq, params = better_bumps(self.model)
-
             dz = params[0].dx
+            
+            if self.verbose:
+                print('x: ', x, ', dx: ', dx)
+                print('dz: ', dz)
 
             # Reward function
             if chisq < 10:

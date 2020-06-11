@@ -44,7 +44,7 @@ next_dir = max([int(f) for f in os.listdir('rec')+["0"] if f.isdigit()])+1
 rec_dir = 'rec/'+str(next_dir)+'/rank_'+str(rank)
 os.makedirs(rec_dir)
 
-player = MCTSPlayer(rec_dir, 'hkl-v0', max_depth=20, playouts=5, verbose=(rank == 0) )# player2 = MCTS_Pure(5,200)
+player = MCTSPlayer(rec_dir, 'hkl-v1', max_depth=20, playouts=5, verbose=(rank == 0) )# player2 = MCTS_Pure(5,200)
 
 def start_tree_search(start_player=0):
     bcast_move = -1

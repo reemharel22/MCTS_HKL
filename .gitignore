@@ -24,8 +24,7 @@
 *.log
 *.sql
 *.sqlite
-*Log-1_0.txt
-*Log-0.txt
+*Log-*0.txt
  
 # OS generated files #
 ######################
@@ -43,6 +42,7 @@ Thumbs.db
 *.so
 *.dyld
 *.pyc
+**.swp
 __pycache__
 /src
 /dist
