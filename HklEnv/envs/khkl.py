@@ -8,6 +8,7 @@ import math
 
 import numpy as np
 import matplotlib as mpl
+#mpl.use('TkAgg')
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
@@ -88,6 +89,7 @@ class HklEnv(gym.Env):
         self.chisqds = []
         self.totReward = 0
         self.envRank = 0
+        self.verbose = False
         
         #Setting up boolean masking
         self.valid_actions = np.ones(shape=(5, len(self.refList)))
@@ -102,7 +104,8 @@ class HklEnv(gym.Env):
         self.reset()
 
     def step(self, actions=None):
-        #print("Action #",actions, end=", ")
+        if self.verbose:
+             print("Action #",actions, end=", ")
         hkl_prev = [None] * 3
         hkl_prev[0] = self.hs[-1]
         hkl_prev[1] = self.ks[-1]
@@ -126,10 +129,12 @@ class HklEnv(gym.Env):
         if next_ref == -1 or next_ref == 0:
             reward = 0
         else:
-            print("Valid HKL #",next_ref)
+            if self.verbose:
+                print("Valid HKL #",next_ref)
             actions = next_ref
             reward = 0
-            print ("Selected HKL: ", self.refList[actions].hkl)
+            if self.verbose:
+                print ("Selected HKL: ", self.refList[actions].hkl)
 
             chisq = None
             dz = None
@@ -176,7 +181,7 @@ class HklEnv(gym.Env):
 
             # appened hkls to be logged
             # aaa = self.hkl_to_action(self.hs[-1], self.ks[-1], self.ls[-1])
-            print("Reward: ", reward)
+            #print("Reward: ", reward)
         #Ending conditions
         #if (self.prevChisq != None and len(self.visited) > 10 and chisq < 0.05):
         if self.steps > 22*22:
@@ -257,8 +262,7 @@ class HklEnv(gym.Env):
         self.rewards.append(self.totReward)
         filename = self.storspot +"/rewardLog-" +  str(self.envRank) + ".txt"
         np.savetxt(filename, self.rewards)   
-        
-        print("======ENDED EPISODE======\n\n")
+        print("============ENDED EPSIODE=============\n\n")
 
     @property
     def states(self):

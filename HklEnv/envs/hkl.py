@@ -8,6 +8,7 @@ import math
 
 import numpy as np
 import matplotlib as mpl
+#mpl.use('TkAgg')
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
@@ -396,6 +397,16 @@ class HklEnv(gym.Env):
     @property
     def actions(self):
         return dict(num_actions=len(self.refList), type='int')
+
+    def clone_full_state(self):
+        return self.state
+
+    def restore_full_state(self, state):
+        self.state = state
+        for action, isselected in enumerate(state):
+            if isselected == 1:
+                self.step(action)
+                
 
 
 def profile(fn, *args, **kw):

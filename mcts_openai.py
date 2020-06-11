@@ -72,7 +72,7 @@ class Node:
 
 
 class Runner:
-    def __init__(self, rec_dir, env_name, max_depth=1000, playouts=10000):
+    def __init__(self, rec_dir, env_name, max_depth=1000, playouts=10000, verbose=False):
         self.env_name = env_name
         self.max_depth = max_depth
         self.playouts = playouts
@@ -80,6 +80,7 @@ class Runner:
         os.makedirs(self.dir)
         self.root = Node(None, None, self.dir)
         self.env = gym.make(self.env_name)
+        self.verbose = verbose
 
     def print_stats(self, loop, score, avg_time):
         sys.stdout.write('\r%3d   score:%10.3f   avg_time:%4.1f s' % (loop, score, avg_time))
@@ -94,11 +95,15 @@ class Runner:
             temp_env_state = env.unwrapped.clone_full_state()
             env_state = gym.make(self.env_name)
             env_state.unwrapped.restore_full_state(temp_env_state)
+            env_state.unwrapped.verbose = self.verbose
 
             sum_reward = 0
             node = self.root
             terminal = False
             actions = []
+
+            if self.verbose:
+                best_reward = float("-inf")
 
             # selection
             while node.children:
@@ -129,6 +134,13 @@ class Runner:
                 if len(actions) > self.max_depth:
                     sum_reward -= 100
                     break
+            if self.verbose:
+                print("\n======Playout Ended======\n")
+
+            # remember best
+                if self.verbose and best_reward < sum_reward:
+                    best_reward = sum_reward
+                    best_actions = actions
 
             # backpropagate
             while node:
@@ -145,6 +157,10 @@ class Runner:
         p = softmax(1.0 / 1.0 * np.log(np.array(visits) + 1e-10))
         move_probs[list(acts)] = p
         move = np.random.choice(acts, p=move_probs)
+
+        if self.verbose:
+            print('Best actions during the current search were (reward of ' + str(best_reward) + '): ', end='')
+            print(best_actions)
 
         return move, move_probs
 

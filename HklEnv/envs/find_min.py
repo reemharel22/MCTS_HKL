@@ -51,7 +51,7 @@ def findmin(x,y,npeaks):
     indices=wh_cross
     no_width = 0;
   
-    print("indicies outside of else: ", indices)
+    #print("indicies outside of else: ", indices)
 
     if n_crossings>0:
         ysupport=range(len(y))
@@ -61,7 +61,7 @@ def findmin(x,y,npeaks):
         this_max=N.min(ymax)
         max_index=N.nonzero(ymax==this_max)
         best_index = indices[max_index]
-        print('>>>>>>>>>>>>>>>best', best_index)
+        #print('>>>>>>>>>>>>>>>best', best_index)
     else:
         best_index = [0]
 
